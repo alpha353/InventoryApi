@@ -10,16 +10,15 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+
+// Swagger/OpenAPI Configuration
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo { Title = "InventoryApi", Version = "v1" });
+});
 
 // Database Configuration
-// For simplicity in this demo, using a connection string. In production, use User Secrets or Env Vars.
-// Ensure your appsettings.json has "DefaultConnection" or update here.
-// Example connection string: "Host=localhost;Database=InventoryDb;Username=postgres;Password=password"
-// builder.Services.AddDbContext<AppDbContext>(options =>
-//     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // For the purpose of this task, I'll use an in-memory database or a default connection string if not provided,
 // but the requirement asked for PostgreSQL. Use a placeholder connection string if not set.
@@ -38,16 +37,19 @@ builder.Services.AddValidatorsFromAssemblyContaining<StockAdjustmentValidator>()
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// Standardize Middleware Order
+app.UseMiddleware<GlobalExceptionMiddleware>(); // Exception handling first
+
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "InventoryApi v1");
+    c.RoutePrefix = string.Empty; // Serve at root
+});
 
-app.UseMiddleware<GlobalExceptionMiddleware>();
+app.MapGet("/debug", () => "Hello from API Root!");
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection(); // Removed for Docker demo 
 
 app.UseAuthorization();
 
@@ -56,17 +58,7 @@ app.MapControllers();
 // Seed Data
 using (var scope = app.Services.CreateScope())
 {
-    var services = scope.ServiceProvider;
-    try
-    {
-        var context = services.GetRequiredService<AppDbContext>();
-        DbInitializer.Initialize(context);
-    }
-    catch (Exception ex)
-    {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred seeding the DB.");
-    }
+    await DbInitializer.SeedAsync(scope.ServiceProvider);
 }
 
 app.Run();

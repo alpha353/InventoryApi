@@ -4,16 +4,41 @@ namespace InventoryApi.Data;
 
 public static class DbInitializer
 {
-    public static void Initialize(AppDbContext context)
+    public static async Task SeedAsync(IServiceProvider services)
     {
-        context.Database.EnsureCreated();
+        var context = services.GetRequiredService<AppDbContext>();
+        var logger = services.GetRequiredService<ILogger<AppDbContext>>();
 
-        // Look for any products.
-        if (context.Products.Any())
+        for (int i = 0; i < 5; i++)
         {
-            return;   // DB has been seeded
-        }
+            try
+            {
+                // EnsureCreated is enough for this demo, in prod use Migrations
+                await context.Database.EnsureCreatedAsync();
 
+                if (await context.Products.AnyAsync())
+                {
+                    return;   // DB has been seeded
+                }
+
+                await SeedDataAsync(context);
+                return;
+            }
+            catch (Exception ex)
+            {
+                if (i == 4)
+                {
+                    logger.LogError(ex, "Failed to seed DB after 5 attempts.");
+                    throw;
+                }
+                logger.LogWarning($"DB Initialization failed ({ex.Message}). Retrying in 3 seconds...");
+                await Task.Delay(3000);
+            }
+        }
+    }
+
+    private static async Task SeedDataAsync(AppDbContext context)
+    {
         var products = new Product[]
         {
             new Product { Name = "Laptop", SKU = "TECH-001", Description = "High performance laptop", Price = 1200.00m },
@@ -23,23 +48,22 @@ public static class DbInitializer
             new Product { Name = "Desk Chair", SKU = "FURN-001", Description = "Ergonomic desk chair", Price = 150.00m }
         };
 
-        context.Products.AddRange(products);
-        context.SaveChanges();
-        
-        // Initial stock transactions for seeded products
+        await context.Products.AddRangeAsync(products);
+        await context.SaveChangesAsync();
+
         var transactions = new List<StockTransaction>();
-        foreach(var p in products)
+        foreach (var p in products)
         {
-             transactions.Add(new StockTransaction 
-             { 
-                 ProductId = p.Id, 
-                 QuantityChange = 10, 
-                 Type = TransactionType.Restock, 
-                 CreatedAt = DateTime.UtcNow 
-             });
+            transactions.Add(new StockTransaction 
+            { 
+                ProductId = p.Id, 
+                QuantityChange = 10, 
+                Type = TransactionType.Restock, 
+                CreatedAt = DateTime.UtcNow 
+            });
         }
-        
-        context.StockTransactions.AddRange(transactions);
-        context.SaveChanges();
+
+        await context.StockTransactions.AddRangeAsync(transactions);
+        await context.SaveChangesAsync();
     }
 }
