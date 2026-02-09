@@ -125,3 +125,4 @@ C:\Users\Edith\.gemini\antigravity\scratch\InventoryApi\obj\Debug\net10.0\refint
 C:\Users\Edith\.gemini\antigravity\scratch\InventoryApi\obj\Debug\net10.0\InventoryApi.pdb
 C:\Users\Edith\.gemini\antigravity\scratch\InventoryApi\obj\Debug\net10.0\InventoryApi.genruntimeconfig.cache
 C:\Users\Edith\.gemini\antigravity\scratch\InventoryApi\obj\Debug\net10.0\ref\InventoryApi.dll
+C:\Users\Edith\.gemini\antigravity\scratch\InventoryApi\obj\Debug\net10.0\InventoryApi.sourcelink.json
